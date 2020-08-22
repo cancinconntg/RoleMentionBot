@@ -106,7 +106,6 @@ def get_all_roles(update, context):
     cur = DB_CONN.cursor()
     cur.execute("SELECT * FROM record WHERE group_id=%s", (chat_id,))
     result = cur.fetchall()
-    print(result)
     roles = {}
     for record in result:
         roles.setdefault(record.role,  []).append(record.user_id)
