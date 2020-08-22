@@ -1,5 +1,5 @@
 import os
-import sqlite3
+import psycopg2
 import telegram
 from telegram.ext import Updater, CommandHandler, PrefixHandler, MessageHandler, Filters
 
@@ -10,16 +10,16 @@ TOKEN = os.getenv("TOKEN")
 if not TOKEN:
     raise Exception("TOKEN not found")
 
-DB_FILE = "local.db"
-DB_CONN = sqlite3.connect(DB_FILE, check_same_thread=False)
+DB_URL = os.environ['DATABASE_URL']
+DB_CONN = psycopg2.connect(DB_URL, sslmode='require')
 
 
 def init_db():
     cur = DB_CONN.cursor()
     cur.execute("CREATE TABLE IF NOT EXISTS record ("
-                "id INTEGER PRIMARY KEY,"
-                "user_id INTEGER NOT NULL,"
-                "group_id INTEGER NOT NULL,"
+                "id SERIAL PRIMARY KEY,"
+                "user_id BIGINT NOT NULL,"
+                "group_id BIGINT NOT NULL,"
                 "role TEXT NOT NULL"
                 ");")
     DB_CONN.commit()
@@ -55,13 +55,13 @@ def add_role(update, context):
     for role in roles:
         if role[0] == "@":
             role = role[1:]
-        cur.execute("SELECT * FROM record WHERE user_id=? AND group_id=? AND role=?", (user_id, chat_id, role))
+        cur.execute("SELECT * FROM record WHERE user_id=%s AND group_id=%s AND role=%s", (user_id, chat_id, role))
         result = cur.fetchall()
         if result:
             update.message.reply_text(f"Role @{role} exists for you")
             continue
         cur.execute("INSERT INTO record(user_id, group_id, role) "
-                    "VALUES (?, ?, ?)", (user_id, chat_id, role))
+                    "VALUES (%s, %s, %s)", (user_id, chat_id, role))
         update.message.reply_text(f"Add role @{role}")
     DB_CONN.commit()
 
@@ -75,7 +75,7 @@ def delete_role(update, context):
     for role in roles:
         if role[0] == "@":
             role = role[1:]
-        cur.execute("DELETE FROM record WHERE user_id=? AND group_id=? AND role=?", (user_id, chat_id, role))
+        cur.execute("DELETE FROM record WHERE user_id=%s AND group_id=%s AND role=%s", (user_id, chat_id, role))
         update.message.reply_text(f"Delete role @{role}")
     DB_CONN.commit()
 
@@ -85,7 +85,7 @@ def get_role(update, context):
     chat_id = update.message.chat_id
     user_id = update.effective_user.id
     cur = DB_CONN.cursor()
-    cur.execute("SELECT (role) FROM record WHERE group_id=? AND user_id=?", (chat_id, user_id))
+    cur.execute("SELECT (role) FROM record WHERE group_id=%s AND user_id=%s", (chat_id, user_id))
     result = cur.fetchall()
     roles = [f"@{item[0]}" for item in result]
     update.message.reply_text("Your roles: \n" + " ".join(roles))
@@ -108,7 +108,7 @@ def check_mention(update, context):
     users = set()
     for word in text:
         if word[0] == "@":
-            cur.execute("SELECT (user_id) FROM record WHERE group_id=? AND role=?", (chat_id, word[1:]))
+            cur.execute("SELECT (user_id) FROM record WHERE group_id=%s AND role=%s", (chat_id, word[1:]))
             result = cur.fetchall()
             users.update(item[0] for item in result)
 
