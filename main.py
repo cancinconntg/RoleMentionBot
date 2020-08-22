@@ -37,7 +37,9 @@ def start(update, context):
 def send_help(update, context):
     message = ["These are my commands:"]
     for obj in CommandList:
-        message.append(f"`{PREFIX}{obj.command}`\t{obj.help}")
+        cc = f"{PREFIX}{obj.command}"
+        cc += " " * (10 - len(cc))
+        message.append(f"`{cc}{obj.help}`")
     update.message.reply_markdown("\n".join(message))
 
 
