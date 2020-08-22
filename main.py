@@ -13,6 +13,8 @@ if not TOKEN:
 DB_URL = os.environ['DATABASE_URL']
 DB_CONN = psycopg2.connect(DB_URL, sslmode='require')
 
+Commands = {}
+
 
 def init_db():
     cur = DB_CONN.cursor()
@@ -43,9 +45,21 @@ def only_group(func):
         if chat is not None and chat.type in ("group", "supergroup"):
             return func(update, context)
         update.message.reply_text("You can use this only on groups!")
+
     return wrapper
 
 
+def prefix_command(command):
+    def my_function(func):
+        global Commands
+        def wrapper(update, context):
+            return func(update, context)
+        Commands[command] = wrapper
+        return wrapper
+    return my_function
+
+
+@prefix_command(command="add")
 @only_group
 def add_role(update, context):
     cur = DB_CONN.cursor()
@@ -66,6 +80,7 @@ def add_role(update, context):
     DB_CONN.commit()
 
 
+@prefix_command(command="del")
 @only_group
 def delete_role(update, context):
     cur = DB_CONN.cursor()
@@ -80,6 +95,7 @@ def delete_role(update, context):
     DB_CONN.commit()
 
 
+@prefix_command(command="get")
 @only_group
 def get_role(update, context):
     chat_id = update.message.chat_id
@@ -128,9 +144,12 @@ def main():
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("help", send_help))
-    dispatcher.add_handler(PrefixHandler(PREFIX, "add", add_role))
-    dispatcher.add_handler(PrefixHandler(PREFIX, "del", delete_role))
-    dispatcher.add_handler(PrefixHandler(PREFIX, "get", get_role))
+    # dispatcher.add_handler(PrefixHandler(PREFIX, "add", add_role))
+    # dispatcher.add_handler(PrefixHandler(PREFIX, "del", delete_role))
+    # dispatcher.add_handler(PrefixHandler(PREFIX, "get", get_role))
+    for key in Commands.keys():
+        print(key)
+        dispatcher.add_handler(PrefixHandler(PREFIX, key, Commands[key]))
     dispatcher.add_handler(MessageHandler(Filters.all, check_mention))
     updater.start_polling()
     updater.idle()
