@@ -1,5 +1,6 @@
 import os
 import psycopg2
+import psycopg2.extras
 import telegram
 from telegram.ext import Updater, CommandHandler, PrefixHandler, MessageHandler, Filters
 
@@ -11,7 +12,7 @@ if not TOKEN:
     raise Exception("TOKEN not found")
 
 DB_URL = os.environ['DATABASE_URL']
-DB_CONN = psycopg2.connect(DB_URL, sslmode='require')
+DB_CONN = psycopg2.connect(DB_URL, sslmode='require', cursor_factory=psycopg2.extras.NamedTupleCursor)
 
 Commands = {}
 
@@ -39,28 +40,22 @@ def send_help(update, context):
                                   "`r!get`")
 
 
-def only_group(func):
-    def wrapper(update, context):
-        chat = update.effective_chat
-        if chat is not None and chat.type in ("group", "supergroup"):
-            return func(update, context)
-        update.message.reply_text("You can use this only on groups!")
-
-    return wrapper
-
-
 def prefix_command(command):
     def my_function(func):
         global Commands
+
         def wrapper(update, context):
-            return func(update, context)
+            chat = update.effective_chat
+            if chat is not None and chat.type in ("group", "supergroup"):
+                return func(update, context)
+            update.message.reply_text("You can use this only on groups!")
+
         Commands[command] = wrapper
         return wrapper
     return my_function
 
 
 @prefix_command(command="add")
-@only_group
 def add_role(update, context):
     cur = DB_CONN.cursor()
     chat_id = update.message.chat_id
@@ -81,7 +76,6 @@ def add_role(update, context):
 
 
 @prefix_command(command="del")
-@only_group
 def delete_role(update, context):
     cur = DB_CONN.cursor()
     chat_id = update.message.chat_id
@@ -96,7 +90,6 @@ def delete_role(update, context):
 
 
 @prefix_command(command="get")
-@only_group
 def get_role(update, context):
     chat_id = update.message.chat_id
     user_id = update.effective_user.id
@@ -107,11 +100,28 @@ def get_role(update, context):
     update.message.reply_text("Your roles: \n" + " ".join(roles))
 
 
-@only_group
+@prefix_command(command="getall")
+def get_all_roles(update, context):
+    chat_id = update.message.chat_id
+    cur = DB_CONN.cursor()
+    cur.execute("SELECT * FROM record WHERE group_id=%s", (chat_id,))
+    result = cur.fetchall()
+    print(result)
+    roles = {}
+    for record in result:
+        roles.setdefault(record.role,  []).append(record.user_id)
+    message = ["All roles: "]
+    for role in roles.keys():
+        message.append(f"@{role}: ")
+        for user_id in roles[role]:
+            member = context.bot.get_chat_member(chat_id, user_id)
+            message.append(f"==> [{member.user.full_name}](tg://user?id={user_id})")
+    update.message.reply_markdown("\n".join(message))
+
+
 def check_mention(update, context):
     cur = DB_CONN.cursor()
     chat_id = update.message.chat_id
-    bot = context.bot
 
     if update.message.text is not None:
         text = update.message.text
@@ -132,9 +142,9 @@ def check_mention(update, context):
     for i in range(0, len(users), BATCH):
         current = users[i:i + BATCH]
         message = []
-        for idx in current:
-            member = bot.get_chat_member(chat_id, idx)
-            message.append(f"[{member.user.first_name}](tg://user?id={idx})")
+        for user_id in current:
+            member = context.bot.get_chat_member(chat_id, user_id)
+            message.append(f"[{member.user.first_name}](tg://user?id={user_id})")
         update.message.reply_markdown(" ".join(message))
 
 
@@ -144,12 +154,11 @@ def main():
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("help", send_help))
-    # dispatcher.add_handler(PrefixHandler(PREFIX, "add", add_role))
-    # dispatcher.add_handler(PrefixHandler(PREFIX, "del", delete_role))
-    # dispatcher.add_handler(PrefixHandler(PREFIX, "get", get_role))
+
     for key in Commands.keys():
-        print(key)
         dispatcher.add_handler(PrefixHandler(PREFIX, key, Commands[key]))
+        print(f"Command {key} added {Commands[key]}")
+
     dispatcher.add_handler(MessageHandler(Filters.all, check_mention))
     updater.start_polling()
     updater.idle()
