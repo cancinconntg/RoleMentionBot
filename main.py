@@ -56,7 +56,7 @@ def prefix_command(command, help=""):
     return my_function
 
 
-@prefix_command(command="add")
+@prefix_command(command="add", help="Add role")
 def add_role(update, context):
     cur = DB_CONN.cursor()
     chat_id = update.message.chat_id
@@ -76,7 +76,7 @@ def add_role(update, context):
     DB_CONN.commit()
 
 
-@prefix_command(command="del")
+@prefix_command(command="del", help="Delete role")
 def delete_role(update, context):
     cur = DB_CONN.cursor()
     chat_id = update.message.chat_id
@@ -90,7 +90,7 @@ def delete_role(update, context):
     DB_CONN.commit()
 
 
-@prefix_command(command="get")
+@prefix_command(command="get", help="Get your roles")
 def get_role(update, context):
     chat_id = update.message.chat_id
     user_id = update.effective_user.id
@@ -101,7 +101,7 @@ def get_role(update, context):
     update.message.reply_text("Your roles: \n" + " ".join(roles))
 
 
-@prefix_command(command="getall")
+@prefix_command(command="getall", help="Get group roles")
 def get_all_roles(update, context):
     chat_id = update.message.chat_id
     cur = DB_CONN.cursor()
