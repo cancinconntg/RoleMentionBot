@@ -4,7 +4,7 @@ import psycopg2.extras
 import telegram
 from telegram.ext import Updater, CommandHandler, PrefixHandler, MessageHandler, Filters
 
-PREFIX = "r!"
+PREFIX = ";"
 BATCH = 5
 
 TOKEN = os.getenv("TOKEN")
@@ -112,10 +112,10 @@ def get_all_roles(update, context):
         roles.setdefault(record.role,  []).append(record.user_id)
     message = ["All roles: "]
     for role in roles.keys():
-        message.append(f"@{role}: ")
+        message.append(f"\n@{role}: ")
         for user_id in roles[role]:
             member = context.bot.get_chat_member(chat_id, user_id)
-            message.append(f"==> [{member.user.full_name}](tg://user?id={user_id})")
+            message.append(f"=> [{member.user.full_name}](tg://user?id={user_id})")
     update.message.reply_markdown("\n".join(message))
 
 
