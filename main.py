@@ -3,6 +3,7 @@ import psycopg2
 import psycopg2.extras
 import telegram
 from telegram.ext import Updater, CommandHandler, PrefixHandler, MessageHandler, Filters
+from collections import namedtuple
 
 PREFIX = ";"
 BATCH = 5
@@ -14,7 +15,8 @@ if not TOKEN:
 DB_URL = os.environ['DATABASE_URL']
 DB_CONN = psycopg2.connect(DB_URL, sslmode='require', cursor_factory=psycopg2.extras.NamedTupleCursor)
 
-Commands = {}
+Command = namedtuple("Command", "command function help")
+CommandList = []
 
 
 def init_db():
@@ -33,16 +35,15 @@ def start(update, context):
 
 
 def send_help(update, context):
-    update.message.reply_markdown("Hi! These are my commands.\n"
-                                  "Works only in groups or supergroups!\n"
-                                  "`r!add [roles...]`\n"
-                                  "`r!del [roles...]`\n"
-                                  "`r!get`")
+    message = ["These are my commands:"]
+    for obj in CommandList:
+        message.append(f"`{PREFIX}{obj.command}`\t{obj.help}")
+    update.message.reply_markdown("\n".join(message))
 
 
-def prefix_command(command):
+def prefix_command(command, help=""):
     def my_function(func):
-        global Commands
+        global CommandList
 
         def wrapper(update, context):
             chat = update.effective_chat
@@ -50,7 +51,7 @@ def prefix_command(command):
                 return func(update, context)
             update.message.reply_text("You can use this only on groups!")
 
-        Commands[command] = wrapper
+        CommandList.append(Command(command, wrapper, help))
         return wrapper
     return my_function
 
@@ -154,9 +155,9 @@ def main():
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("help", send_help))
 
-    for key in Commands.keys():
-        dispatcher.add_handler(PrefixHandler(PREFIX, key, Commands[key]))
-        print(f"Command {key} added {Commands[key]}")
+    for obj in CommandList:
+        dispatcher.add_handler(PrefixHandler(PREFIX, obj.command, obj.function))
+        print(f"Command {obj.command} added {obj.function}")
 
     dispatcher.add_handler(MessageHandler(Filters.all, check_mention))
     updater.start_polling()
