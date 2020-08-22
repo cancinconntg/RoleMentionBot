@@ -9,6 +9,7 @@ BATCH = 5
 TOKEN = os.getenv("TOKEN")
 if not TOKEN:
     raise Exception("TOKEN not found")
+
 DB_FILE = "local.db"
 DB_CONN = sqlite3.connect(DB_FILE, check_same_thread=False)
 
