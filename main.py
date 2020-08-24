@@ -15,7 +15,7 @@ if not TOKEN:
 DB_URL = os.environ['DATABASE_URL']
 DB_CONN = psycopg2.connect(DB_URL, sslmode='require', cursor_factory=psycopg2.extras.NamedTupleCursor)
 
-Command = namedtuple("Command", "command function help")
+Command = namedtuple("Command", "command function usage help")
 CommandList = []
 
 
@@ -37,28 +37,38 @@ def start(update, context):
 def send_help(update, context):
     message = ["These are my commands:"]
     for obj in CommandList:
-        cc = f"{PREFIX}{obj.command}"
-        cc += " " * (10 - len(cc))
-        message.append(f"`{cc}{obj.help}`")
+        cmd = f"{PREFIX}{obj.command} {obj.usage}"
+        cmd += " " * (20 - len(cmd))
+        message.append(f"`{cmd}{obj.help}`")
     update.message.reply_markdown("\n".join(message))
 
 
-def prefix_command(command, help=""):
-    def my_function(func):
+def prefix_command(command, **kwargs):
+    kwargs.setdefault("help", "")
+    kwargs.setdefault("usage", "")
+
+    def _decorator(func):
         global CommandList
 
         def wrapper(update, context):
-            chat = update.effective_chat
-            if chat is not None and chat.type in ("group", "supergroup"):
-                return func(update, context)
-            update.message.reply_text("You can use this only on groups!")
+            return func(update, context)
 
-        CommandList.append(Command(command, wrapper, help))
+        CommandList.append(Command(command=command, function=wrapper, **kwargs))
         return wrapper
-    return my_function
+    return _decorator
 
 
-@prefix_command(command="add", help="Add role")
+def only_group(func):
+    def wrapper(update, context):
+        chat = update.effective_chat
+        if chat is not None and chat.type in ("group", "supergroup"):
+            return func(update, context)
+        update.message.reply_text("You can use this only on groups!")
+    return wrapper
+
+
+@prefix_command(command="add", usage="[roles...]", help="Add role")
+@only_group
 def add_role(update, context):
     cur = DB_CONN.cursor()
     chat_id = update.message.chat_id
@@ -78,7 +88,8 @@ def add_role(update, context):
     DB_CONN.commit()
 
 
-@prefix_command(command="del", help="Delete role")
+@prefix_command(command="del", usage="[roles...]", help="Delete role")
+@only_group
 def delete_role(update, context):
     cur = DB_CONN.cursor()
     chat_id = update.message.chat_id
@@ -93,6 +104,7 @@ def delete_role(update, context):
 
 
 @prefix_command(command="get", help="Get your roles")
+@only_group
 def get_role(update, context):
     chat_id = update.message.chat_id
     user_id = update.effective_user.id
@@ -104,7 +116,8 @@ def get_role(update, context):
 
 
 @prefix_command(command="getall", help="Get group roles")
-def get_all_roles(update, context):
+@only_group
+def get_group_roles(update, context):
     chat_id = update.message.chat_id
     cur = DB_CONN.cursor()
     cur.execute("SELECT * FROM record WHERE group_id=%s", (chat_id,))
