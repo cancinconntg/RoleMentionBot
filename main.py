@@ -4,6 +4,7 @@ import psycopg2.extras
 import telegram
 from telegram.ext import Updater, CommandHandler, PrefixHandler, MessageHandler, Filters
 from collections import namedtuple
+from typing import NamedTuple, Callable
 
 PREFIX = ";"
 BATCH = 5
@@ -15,7 +16,15 @@ if not TOKEN:
 DB_URL = os.environ['DATABASE_URL']
 DB_CONN = psycopg2.connect(DB_URL, sslmode='require', cursor_factory=psycopg2.extras.NamedTupleCursor)
 
-Command = namedtuple("Command", "command function usage help")
+
+class Command(NamedTuple):
+    command: str
+    function: Callable
+    usage: str = ""
+    help: str = ""
+    hidden: bool = False
+
+
 CommandList = []
 
 
@@ -30,23 +39,7 @@ def init_db():
     DB_CONN.commit()
 
 
-def start(update, context):
-    update.message.reply_text(f"Hi!")
-
-
-def send_help(update, context):
-    message = ["These are my commands:"]
-    for obj in CommandList:
-        cmd = f"{PREFIX}{obj.command} {obj.usage}"
-        cmd += " " * (20 - len(cmd))
-        message.append(f"`{cmd}{obj.help}`")
-    update.message.reply_markdown("\n".join(message))
-
-
 def prefix_command(command, **kwargs):
-    kwargs.setdefault("help", "")
-    kwargs.setdefault("usage", "")
-
     def _decorator(func):
         global CommandList
 
@@ -65,6 +58,23 @@ def only_group(func):
             return func(update, context)
         update.message.reply_text("You can use this only on groups!")
     return wrapper
+
+
+@prefix_command(command="start", hidden=True)
+def start(update, context):
+    update.message.reply_text(f"Hi!")
+
+
+@prefix_command(command="help", hidden=True)
+def send_help(update, context):
+    message = ["These are my commands:"]
+    for obj in CommandList:
+        if obj.hidden:
+            continue
+        cmd = f"{PREFIX}{obj.command} {obj.usage}"
+        cmd += " " * (20 - len(cmd))
+        message.append(f"`{cmd}{obj.help}`")
+    update.message.reply_markdown("\n".join(message))
 
 
 @prefix_command(command="add", usage="[roles...]", help="Add role")
