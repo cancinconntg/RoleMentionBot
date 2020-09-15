@@ -77,6 +77,12 @@ def send_help(update, context):
     update.message.reply_markdown("\n".join(message))
 
 
+@prefix_command(command="about", hidden=True)
+def send_about(update, context):
+    update.message.reply_text("This bot add feature to groups and super-groups similar to mention a role in Discord. "
+                              "Members can join some role and get notified when the role mentioned.")
+
+
 @prefix_command(command="add", usage="[roles...]", help="Add role")
 @only_group
 def add_role(update, context):
@@ -178,6 +184,7 @@ def main():
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("help", send_help))
+    dispatcher.add_handler(CommandHandler("about", send_about))
 
     for obj in CommandList:
         dispatcher.add_handler(PrefixHandler(PREFIX, obj.command, obj.function))
