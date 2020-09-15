@@ -143,7 +143,7 @@ def get_group_roles(update, context):
         roles.setdefault(record.role,  []).append(record.user_id)
     message = ["All roles: "]
     for role in roles.keys():
-        message.append(f"\n@{role}: ")
+        message.append(f"@{role}: ")
         for user_id in roles[role]:
             member = context.bot.get_chat_member(chat_id, user_id)
             message.append(f"=> [{member.user.full_name}](tg://user?id={user_id})")
