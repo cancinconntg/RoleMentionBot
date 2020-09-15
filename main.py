@@ -30,7 +30,7 @@ CommandList = []
 
 def init_db():
     cur = DB_CONN.cursor()
-    cur.execute("CREATE TABLE IF NOT EXISTS record ("
+    cur.execute("CREATE TABLE IF NOT EXISTS roletable ("
                 "id SERIAL PRIMARY KEY,"
                 "user_id BIGINT NOT NULL,"
                 "group_id BIGINT NOT NULL,"
@@ -87,12 +87,12 @@ def add_role(update, context):
     for role in roles:
         if role[0] == "@":
             role = role[1:]
-        cur.execute("SELECT * FROM record WHERE user_id=%s AND group_id=%s AND role=%s", (user_id, chat_id, role))
+        cur.execute("SELECT * FROM roletable WHERE user_id=%s AND group_id=%s AND role=%s", (user_id, chat_id, role))
         result = cur.fetchall()
         if result:
             update.message.reply_text(f"Role @{role} exists for you")
             continue
-        cur.execute("INSERT INTO record(user_id, group_id, role) "
+        cur.execute("INSERT INTO roletable(user_id, group_id, role) "
                     "VALUES (%s, %s, %s)", (user_id, chat_id, role))
         update.message.reply_text(f"Add role @{role}")
     DB_CONN.commit()
@@ -108,7 +108,7 @@ def delete_role(update, context):
     for role in roles:
         if role[0] == "@":
             role = role[1:]
-        cur.execute("DELETE FROM record WHERE user_id=%s AND group_id=%s AND role=%s", (user_id, chat_id, role))
+        cur.execute("DELETE FROM roletable WHERE user_id=%s AND group_id=%s AND role=%s", (user_id, chat_id, role))
         update.message.reply_text(f"Delete role @{role}")
     DB_CONN.commit()
 
@@ -119,7 +119,7 @@ def get_role(update, context):
     chat_id = update.message.chat_id
     user_id = update.effective_user.id
     cur = DB_CONN.cursor()
-    cur.execute("SELECT (role) FROM record WHERE group_id=%s AND user_id=%s", (chat_id, user_id))
+    cur.execute("SELECT (role) FROM roletable WHERE group_id=%s AND user_id=%s", (chat_id, user_id))
     result = cur.fetchall()
     roles = [f"@{item[0]}" for item in result]
     update.message.reply_text("Your roles: \n" + " ".join(roles))
@@ -130,7 +130,7 @@ def get_role(update, context):
 def get_group_roles(update, context):
     chat_id = update.message.chat_id
     cur = DB_CONN.cursor()
-    cur.execute("SELECT * FROM record WHERE group_id=%s", (chat_id,))
+    cur.execute("SELECT * FROM roletable WHERE group_id=%s", (chat_id,))
     result = cur.fetchall()
     roles = {}
     for record in result:
@@ -154,12 +154,11 @@ def check_mention(update, context):
         text = update.message.caption
     else:
         return
-    text = text.split()
 
     users = set()
-    for word in text:
+    for word in text.split():
         if word[0] == "@":
-            cur.execute("SELECT (user_id) FROM record WHERE group_id=%s AND role=%s", (chat_id, word[1:]))
+            cur.execute("SELECT (user_id) FROM roletable WHERE group_id=%s AND role=%s", (chat_id, word[1:]))
             result = cur.fetchall()
             users.update(item[0] for item in result)
 
