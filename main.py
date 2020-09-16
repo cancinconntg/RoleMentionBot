@@ -119,7 +119,7 @@ def delete_role(update, context):
     DB_CONN.commit()
 
 
-@prefix_command(command="get", help="Get your roles")
+@prefix_command(command="me", help="Get your roles")
 @only_group
 def get_role(update, context):
     chat_id = update.message.chat_id
@@ -131,7 +131,7 @@ def get_role(update, context):
     update.message.reply_text("Your roles: \n" + " ".join(roles))
 
 
-@prefix_command(command="getall", help="Get group roles")
+@prefix_command(command="all", help="Get group roles")
 @only_group
 def get_group_roles(update, context):
     chat_id = update.message.chat_id
@@ -141,12 +141,13 @@ def get_group_roles(update, context):
     roles = {}
     for record in result:
         roles.setdefault(record.role,  []).append(record.user_id)
-    message = ["All roles: "]
+    message = ["Tree of roles: "]
     for role in roles.keys():
         message.append(f"@{role}: ")
         for user_id in roles[role]:
             member = context.bot.get_chat_member(chat_id, user_id)
-            message.append(f"=> [{member.user.full_name}](tg://user?id={user_id})")
+            message.append(f"├─{member.user.full_name}")
+        message[-1] = "└" + message[-1][1:]
     update.message.reply_markdown("\n".join(message))
 
 
@@ -175,7 +176,7 @@ def check_mention(update, context):
         for user_id in current:
             member = context.bot.get_chat_member(chat_id, user_id)
             message.append(f"[{member.user.first_name}](tg://user?id={user_id})")
-        update.message.reply_markdown(" ".join(message))
+        update.message.reply_markdown(", ".join(message))
 
 
 def main():
