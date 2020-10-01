@@ -3,7 +3,6 @@ import psycopg2
 import psycopg2.extras
 import telegram
 from telegram.ext import Updater, CommandHandler, PrefixHandler, MessageHandler, Filters
-from collections import namedtuple
 from typing import NamedTuple, Callable
 
 PREFIX = ";"
@@ -15,6 +14,13 @@ if not TOKEN:
 
 DB_URL = os.environ['DATABASE_URL']
 DB_CONN = psycopg2.connect(DB_URL, sslmode='require', cursor_factory=psycopg2.extras.NamedTupleCursor)
+
+REGISTERED = os.getenv("REGISTERED")
+if REGISTERED is None:
+    print("WARNING: There is no registered groups")
+    REGISTERED = set()
+else:
+    REGISTERED = set(map(int, REGISTERED.split(';')))
 
 
 class Command(NamedTuple):
@@ -54,15 +60,23 @@ def prefix_command(command, **kwargs):
 def only_group(func):
     def wrapper(update, context):
         chat = update.effective_chat
-        if chat is not None and chat.type in ("group", "supergroup"):
+        if chat is not None and chat.type in ("group", "supergroup") and chat.id in REGISTERED:
             return func(update, context)
-        update.message.reply_text("You can use this only on groups!")
     return wrapper
 
 
 @prefix_command(command="start", hidden=True)
 def start(update, context):
-    update.message.reply_text(f"Hi!")
+    chat = update.effective_chat
+    if chat is None or chat.type not in ("group", "supergroup"):
+        update.message.reply_text(f"Hi!")
+        return
+    message = f"Hi!\nThe id for this group is {chat.id}, "
+    if chat.id in REGISTERED:
+        message += "and it is registered :)"
+    else:
+        message += "and it is not registered yet. So most features may not available :("
+    update.message.reply_markdown(message)
 
 
 @prefix_command(command="help", hidden=True)
