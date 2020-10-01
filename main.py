@@ -126,23 +126,26 @@ def add_role_command(update, context):
 
     cur.execute("INSERT INTO roletable(user_id, group_id, role) "
                 "VALUES (%s, %s, %s)", (user_id, chat_id, role))
-    update.message.reply_text(f"Add role @{role}")
     DB_CONN.commit()
+    update.message.reply_markdown(f"Add role @{role}")
 
 
-@prefix_command(command="del", usage="[roles...]", help="Delete role")
+@prefix_command(command="del", usage="<role>", help="Delete role")
 @only_group
 def delete_role_command(update, context):
     cur = DB_CONN.cursor()
     chat_id = update.message.chat_id
     user_id = update.effective_user.id
-    roles = update.message.text.split()[1:]
-    for role in roles:
-        if role[0] == "@":
-            role = role[1:]
-        cur.execute("DELETE FROM roletable WHERE user_id=%s AND group_id=%s AND role=%s", (user_id, chat_id, role))
-        update.message.reply_text(f"Delete role @{role}")
+    message = update.message.text.split()[1:]
+    if len(message) > 1:
+        update.message.reply_markdown("Bad formatted name")
+        return
+    role = message[0]
+    if role[0] == "@":
+        role = role[1:]
+    cur.execute("DELETE FROM roletable WHERE user_id=%s AND group_id=%s AND role=%s", (user_id, chat_id, role))
     DB_CONN.commit()
+    update.message.reply_markdown(f"Delete role @{role}")
 
 
 @prefix_command(command="me", help="Get your roles")
