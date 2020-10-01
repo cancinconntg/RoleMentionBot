@@ -94,8 +94,8 @@ def send_help(update, context):
 
 @prefix_command(command="about", hidden=True)
 def send_about(update, context):
-    update.message.reply_text("This bot add feature to groups and super-groups similar to mention a role in Discord. "
-                              "Members can join some role and get notified when the role mentioned.")
+    update.message.reply_text("This telegram bot adds a feature to groups and super-groups similar to mention a role "
+                              "in Discord. Members can join some roles and get notified when the role mentioned.")
 
 
 @prefix_command(command="add", usage="<role>", help="Add role")
