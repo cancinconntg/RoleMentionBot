@@ -7,6 +7,7 @@ from typing import NamedTuple, Callable
 
 PREFIX = ";"
 BATCH = 5
+MAX_ROLES = 10
 
 TOKEN = os.getenv("TOKEN")
 if not TOKEN:
@@ -97,30 +98,41 @@ def send_about(update, context):
                               "Members can join some role and get notified when the role mentioned.")
 
 
-@prefix_command(command="add", usage="[roles...]", help="Add role")
+@prefix_command(command="add", usage="<role>", help="Add role")
 @only_group
-def add_role(update, context):
-    cur = DB_CONN.cursor()
+def add_role_command(update, context):
     chat_id = update.message.chat_id
     user_id = update.effective_user.id
-    roles = update.message.text.split()[1:]
-    for role in roles:
-        if role[0] == "@":
-            role = role[1:]
-        cur.execute("SELECT * FROM roletable WHERE user_id=%s AND group_id=%s AND role=%s", (user_id, chat_id, role))
-        result = cur.fetchall()
-        if result:
-            update.message.reply_text(f"Role @{role} exists for you")
-            continue
-        cur.execute("INSERT INTO roletable(user_id, group_id, role) "
-                    "VALUES (%s, %s, %s)", (user_id, chat_id, role))
-        update.message.reply_text(f"Add role @{role}")
+    message = update.message.text.split()[1:]
+    if len(message) > 1:
+        update.message.reply_markdown("Bad formatted name")
+        return
+    role = message[0]
+    if role[0] == "@":
+        role = role[1:]
+
+    cur = DB_CONN.cursor()
+    cur.execute("SELECT * FROM roletable WHERE user_id=%s AND group_id=%s AND role=%s", (user_id, chat_id, role))
+    result = cur.fetchall()
+    if result:
+        update.message.reply_markdown(f"Role @{role} exists for you")
+        return
+
+    cur.execute("SELECT * FROM roletable WHERE user_id=%s", (user_id,))
+    result = cur.fetchall()
+    if len(result) >= MAX_ROLES:
+        update.message.reply_markdown(f"You have reached the maximum number of roles :(")
+        return
+
+    cur.execute("INSERT INTO roletable(user_id, group_id, role) "
+                "VALUES (%s, %s, %s)", (user_id, chat_id, role))
+    update.message.reply_text(f"Add role @{role}")
     DB_CONN.commit()
 
 
 @prefix_command(command="del", usage="[roles...]", help="Delete role")
 @only_group
-def delete_role(update, context):
+def delete_role_command(update, context):
     cur = DB_CONN.cursor()
     chat_id = update.message.chat_id
     user_id = update.effective_user.id
@@ -135,7 +147,7 @@ def delete_role(update, context):
 
 @prefix_command(command="me", help="Get your roles")
 @only_group
-def get_role(update, context):
+def get_role_command(update, context):
     chat_id = update.message.chat_id
     user_id = update.effective_user.id
     cur = DB_CONN.cursor()
@@ -147,7 +159,7 @@ def get_role(update, context):
 
 @prefix_command(command="all", help="Get group roles")
 @only_group
-def get_group_roles(update, context):
+def get_group_roles_command(update, context):
     chat_id = update.message.chat_id
     cur = DB_CONN.cursor()
     cur.execute("SELECT * FROM roletable WHERE group_id=%s", (chat_id,))
@@ -165,6 +177,7 @@ def get_group_roles(update, context):
     update.message.reply_markdown("\n".join(message))
 
 
+@only_group
 def check_mention(update, context):
     cur = DB_CONN.cursor()
     chat_id = update.message.chat_id
