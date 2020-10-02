@@ -58,7 +58,7 @@ def prefix_command(command, **kwargs):
     return _decorator
 
 
-def only_group(func):
+def only_registered_group(func):
     def wrapper(update, context):
         chat = update.effective_chat
         if chat is not None and chat.type in ("group", "supergroup") and chat.id in REGISTERED:
@@ -67,7 +67,7 @@ def only_group(func):
 
 
 @prefix_command(command="start", hidden=True)
-def start(update, context):
+def start_command(update, context):
     chat = update.effective_chat
     if chat is None or chat.type not in ("group", "supergroup"):
         update.message.reply_text(f"Hi!")
@@ -81,7 +81,7 @@ def start(update, context):
 
 
 @prefix_command(command="help", hidden=True)
-def send_help(update, context):
+def help_command(update, context):
     message = ["These are my commands:"]
     for obj in CommandList:
         if obj.hidden:
@@ -93,13 +93,13 @@ def send_help(update, context):
 
 
 @prefix_command(command="about", hidden=True)
-def send_about(update, context):
+def about_command(update, context):
     update.message.reply_text("This telegram bot adds a feature to groups and super-groups similar to mention a role "
                               "in Discord. Members can join some roles and get notified when the role mentioned.")
 
 
 @prefix_command(command="add", usage="<role>", help="Add role")
-@only_group
+@only_registered_group
 def add_role_command(update, context):
     chat_id = update.message.chat_id
     user_id = update.effective_user.id
@@ -131,7 +131,7 @@ def add_role_command(update, context):
 
 
 @prefix_command(command="del", usage="<role>", help="Delete role")
-@only_group
+@only_registered_group
 def delete_role_command(update, context):
     cur = DB_CONN.cursor()
     chat_id = update.message.chat_id
@@ -149,8 +149,8 @@ def delete_role_command(update, context):
 
 
 @prefix_command(command="me", help="Get your roles")
-@only_group
-def get_role_command(update, context):
+@only_registered_group
+def get_user_info_command(update, context):
     chat_id = update.message.chat_id
     user_id = update.effective_user.id
     cur = DB_CONN.cursor()
@@ -161,8 +161,8 @@ def get_role_command(update, context):
 
 
 @prefix_command(command="all", help="Get group roles")
-@only_group
-def get_group_roles_command(update, context):
+@only_registered_group
+def get_group_info_command(update, context):
     chat_id = update.message.chat_id
     cur = DB_CONN.cursor()
     cur.execute("SELECT * FROM roletable WHERE group_id=%s", (chat_id,))
@@ -180,7 +180,7 @@ def get_group_roles_command(update, context):
     update.message.reply_markdown("\n".join(message))
 
 
-@only_group
+@only_registered_group
 def check_mention(update, context):
     cur = DB_CONN.cursor()
     chat_id = update.message.chat_id
@@ -213,9 +213,9 @@ def main():
     init_db()
     updater = Updater(TOKEN, use_context=True)
     dispatcher = updater.dispatcher
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("help", send_help))
-    dispatcher.add_handler(CommandHandler("about", send_about))
+    dispatcher.add_handler(CommandHandler("start", start_command))
+    dispatcher.add_handler(CommandHandler("help", help_command))
+    dispatcher.add_handler(CommandHandler("about", about_command))
 
     for obj in CommandList:
         dispatcher.add_handler(PrefixHandler(PREFIX, obj.command, obj.function))
