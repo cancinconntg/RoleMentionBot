@@ -8,6 +8,7 @@ from typing import NamedTuple, Callable
 PREFIX = ";"
 BATCH = 5
 MAX_ROLES = 10
+IGNORE_STATUS = (telegram.ChatMember.LEFT, telegram.ChatMember.KICKED)
 
 TOKEN = os.getenv("TOKEN")
 if not TOKEN:
@@ -172,9 +173,12 @@ def get_group_info_command(update, context):
         roles.setdefault(record.role,  []).append(record.user_id)
     message = ["Tree of roles: "]
     for role in roles.keys():
+        chat_members = [context.bot.get_chat_member(chat_id, user_id) for user_id in roles[role]]
+        available = [member for member in chat_members if member.status not in IGNORE_STATUS]
+        if not available:
+            continue
         message.append(f"@{role}: ")
-        for user_id in roles[role]:
-            member = context.bot.get_chat_member(chat_id, user_id)
+        for member in available:
             message.append(f"├─{member.user.full_name}")
         message[-1] = "└" + message[-1][1:]
     update.message.reply_markdown("\n".join(message))
@@ -184,14 +188,12 @@ def get_group_info_command(update, context):
 def check_mention(update, context):
     cur = DB_CONN.cursor()
     chat_id = update.message.chat_id
-
     if update.message.text is not None:
         text = update.message.text
     elif update.message.caption is not None:
         text = update.message.caption
     else:
         return
-
     users = set()
     for word in text.split():
         if word[0] == "@":
@@ -200,12 +202,15 @@ def check_mention(update, context):
             users.update(item[0] for item in result)
 
     users = list(users)
+    chat_members = [context.bot.get_chat_member(chat_id, user_id) for user_id in users]
+    available = [member for member in chat_members if member.status not in IGNORE_STATUS]
+    if not available:
+        return
     for i in range(0, len(users), BATCH):
-        current = users[i:i + BATCH]
+        current = available[i:i + BATCH]
         message = []
-        for user_id in current:
-            member = context.bot.get_chat_member(chat_id, user_id)
-            message.append(f"[{member.user.first_name}](tg://user?id={user_id})")
+        for member in current:
+            message.append(f"[{member.user.first_name}](tg://user?id={member.user.id})")
         update.message.reply_markdown(", ".join(message))
 
 
