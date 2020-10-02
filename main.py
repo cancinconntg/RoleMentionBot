@@ -96,7 +96,7 @@ def start_command(update, context):
 
 @prefix_command(command="help", hidden=True)
 def help_command(update, context):
-    message = ["These are my commands:"]
+    message = ["These are my commands, and they work only in registered groups:"]
     for obj in CommandList:
         if obj.hidden:
             continue
@@ -143,7 +143,7 @@ def add_role_command(update, context):
     cur.execute("INSERT INTO roletable(user_id, group_id, role) "
                 "VALUES (%s, %s, %s)", (user_id, chat_id, role))
     DB_CONN.commit()
-    update.message.reply_markdown(f"Add role @{role}")
+    update.message.reply_markdown(f"Role @{role} added")
 
 
 @prefix_command(command="del", usage="<role>", help="Delete role")
@@ -164,7 +164,7 @@ def delete_role_command(update, context):
     cur = DB_CONN.cursor()
     cur.execute("DELETE FROM roletable WHERE user_id=%s AND group_id=%s AND role=%s", (user_id, chat_id, role))
     DB_CONN.commit()
-    update.message.reply_markdown(f"Delete role @{role}")
+    update.message.reply_markdown(f"Role @{role} deleted")
 
 
 @prefix_command(command="get", usage="<role>", help="Get role members")
