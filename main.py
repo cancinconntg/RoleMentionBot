@@ -105,12 +105,10 @@ def add_role_command(update, context):
     chat_id = update.message.chat_id
     user_id = update.effective_user.id
     message = update.message.text.split()[1:]
-    if len(message) > 1:
-        update.message.reply_markdown("Bad formatted name")
+    if len(message) != 1 or message[0][0] != '@':
+        update.message.reply_markdown("Bad formatted request")
         return
-    role = message[0]
-    if role[0] == "@":
-        role = role[1:]
+    role = message[0][1:]
 
     cur = DB_CONN.cursor()
     cur.execute("SELECT * FROM roletable WHERE user_id=%s AND group_id=%s AND role=%s", (user_id, chat_id, role))
@@ -134,16 +132,14 @@ def add_role_command(update, context):
 @prefix_command(command="del", usage="<role>", help="Delete role")
 @only_registered_group
 def delete_role_command(update, context):
-    cur = DB_CONN.cursor()
     chat_id = update.message.chat_id
     user_id = update.effective_user.id
     message = update.message.text.split()[1:]
-    if len(message) > 1:
-        update.message.reply_markdown("Bad formatted name")
+    if len(message) != 1 or message[0][0] != '@':
+        update.message.reply_markdown("Bad formatted request")
         return
-    role = message[0]
-    if role[0] == "@":
-        role = role[1:]
+    role = message[0][1:]
+    cur = DB_CONN.cursor()
     cur.execute("DELETE FROM roletable WHERE user_id=%s AND group_id=%s AND role=%s", (user_id, chat_id, role))
     DB_CONN.commit()
     update.message.reply_markdown(f"Delete role @{role}")
@@ -159,6 +155,27 @@ def get_user_info_command(update, context):
     result = cur.fetchall()
     roles = [f"@{item[0]}" for item in result]
     update.message.reply_text("Your roles: \n" + " ".join(roles))
+
+
+@prefix_command(command="get", help="Get role members")
+@only_registered_group
+def get_role_info_command(update, context):
+    chat_id = update.message.chat_id
+    message = update.message.text.split()[1:]
+    if len(message) != 1 or message[0][0] != '@':
+        update.message.reply_markdown("Bad formatted request")
+        return
+    role = message[0][1:]
+    cur = DB_CONN.cursor()
+    cur.execute("SELECT * FROM roletable WHERE group_id=%s AND role=%s", (chat_id, role))
+    result = cur.fetchall()
+    chat_members = [context.bot.get_chat_member(chat_id, record.user_id) for record in result]
+    available = [member for member in chat_members if member.status not in IGNORE_STATUS]
+    if not available:
+        update.message.reply_markdown("No user with this role")
+    else:
+        message = "\n".join(member.user.full_name for member in available)
+        update.message.reply_markdown(message)
 
 
 @prefix_command(command="all", help="Get group roles")
