@@ -1,4 +1,5 @@
 import os
+import re
 import psycopg2
 import psycopg2.extras
 import telegram
@@ -9,6 +10,7 @@ PREFIX = ";"
 BATCH = 5
 MAX_ROLES = 10
 IGNORE_STATUS = (telegram.ChatMember.LEFT, telegram.ChatMember.KICKED)
+ROLE_PATTERN = re.compile(r"^(?=.{6,33}$)@([a-zA-Z0-9_]+)$")
 
 TOKEN = os.getenv("TOKEN")
 if not TOKEN:
@@ -67,6 +69,17 @@ def only_registered_group(func):
     return wrapper
 
 
+def find_role(message):
+    match = ROLE_PATTERN.match(message)
+    if not match:
+        return None
+    return match.group(1)
+
+
+def get_command_args(message):
+    return message.split()[1:]
+
+
 @prefix_command(command="start", hidden=True)
 def start_command(update, context):
     chat = update.effective_chat
@@ -104,11 +117,15 @@ def about_command(update, context):
 def add_role_command(update, context):
     chat_id = update.message.chat_id
     user_id = update.effective_user.id
-    message = update.message.text.split()[1:]
-    if len(message) != 1 or message[0][0] != '@':
+
+    args = get_command_args(update.message.text)
+    if len(args) != 1:
         update.message.reply_markdown("Bad formatted request")
         return
-    role = message[0][1:]
+    role = find_role(args[0])
+    if not role:
+        update.message.reply_markdown("Bad formatted request")
+        return
 
     cur = DB_CONN.cursor()
     cur.execute("SELECT * FROM roletable WHERE user_id=%s AND group_id=%s AND role=%s", (user_id, chat_id, role))
@@ -134,11 +151,16 @@ def add_role_command(update, context):
 def delete_role_command(update, context):
     chat_id = update.message.chat_id
     user_id = update.effective_user.id
-    message = update.message.text.split()[1:]
-    if len(message) != 1 or message[0][0] != '@':
+
+    args = get_command_args(update.message.text)
+    if len(args) != 1:
         update.message.reply_markdown("Bad formatted request")
         return
-    role = message[0][1:]
+    role = find_role(args[0])
+    if not role:
+        update.message.reply_markdown("Bad formatted request")
+        return
+
     cur = DB_CONN.cursor()
     cur.execute("DELETE FROM roletable WHERE user_id=%s AND group_id=%s AND role=%s", (user_id, chat_id, role))
     DB_CONN.commit()
@@ -157,15 +179,20 @@ def get_user_info_command(update, context):
     update.message.reply_text("Your roles: \n" + " ".join(roles))
 
 
-@prefix_command(command="get", help="Get role members")
+@prefix_command(command="get", usage="<role>", help="Get role members")
 @only_registered_group
 def get_role_info_command(update, context):
     chat_id = update.message.chat_id
-    message = update.message.text.split()[1:]
-    if len(message) != 1 or message[0][0] != '@':
+
+    args = get_command_args(update.message.text)
+    if len(args) != 1:
         update.message.reply_markdown("Bad formatted request")
         return
-    role = message[0][1:]
+    role = find_role(args[0])
+    if not role:
+        update.message.reply_markdown("Bad formatted request")
+        return
+
     cur = DB_CONN.cursor()
     cur.execute("SELECT * FROM roletable WHERE group_id=%s AND role=%s", (chat_id, role))
     result = cur.fetchall()
@@ -212,18 +239,18 @@ def check_mention(update, context):
     else:
         return
     users = set()
-    for word in text.split():
-        if word[0] == "@":
-            cur.execute("SELECT (user_id) FROM roletable WHERE group_id=%s AND role=%s", (chat_id, word[1:]))
-            result = cur.fetchall()
-            users.update(item[0] for item in result)
+    roles = [find_role(word) for word in text.split() if find_role(word)]
+    for role in roles:
+        cur.execute("SELECT * FROM roletable WHERE group_id=%s AND role=%s", (chat_id, role))
+        result = cur.fetchall()
+        users.update(record.user_id for record in result)
 
     users = list(users)
     chat_members = [context.bot.get_chat_member(chat_id, user_id) for user_id in users]
     available = [member for member in chat_members if member.status not in IGNORE_STATUS]
     if not available:
         return
-    for i in range(0, len(users), BATCH):
+    for i in range(0, len(available), BATCH):
         current = available[i:i + BATCH]
         message = []
         for member in current:
