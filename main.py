@@ -167,18 +167,6 @@ def delete_role_command(update, context):
     update.message.reply_markdown(f"Delete role @{role}")
 
 
-@prefix_command(command="me", help="Get your roles")
-@only_registered_group
-def get_user_info_command(update, context):
-    chat_id = update.message.chat_id
-    user_id = update.effective_user.id
-    cur = DB_CONN.cursor()
-    cur.execute("SELECT (role) FROM roletable WHERE group_id=%s AND user_id=%s", (chat_id, user_id))
-    result = cur.fetchall()
-    roles = [f"@{item[0]}" for item in result]
-    update.message.reply_text("Your roles: \n" + " ".join(roles))
-
-
 @prefix_command(command="get", usage="<role>", help="Get role members")
 @only_registered_group
 def get_role_info_command(update, context):
@@ -203,6 +191,18 @@ def get_role_info_command(update, context):
     else:
         message = "\n".join(member.user.full_name for member in available)
         update.message.reply_markdown(message)
+
+
+@prefix_command(command="me", help="Get your roles")
+@only_registered_group
+def get_user_info_command(update, context):
+    chat_id = update.message.chat_id
+    user_id = update.effective_user.id
+    cur = DB_CONN.cursor()
+    cur.execute("SELECT (role) FROM roletable WHERE group_id=%s AND user_id=%s", (chat_id, user_id))
+    result = cur.fetchall()
+    roles = [f"@{item[0]}" for item in result]
+    update.message.reply_text("Your roles: \n" + " ".join(roles))
 
 
 @prefix_command(command="all", help="Get group roles")
