@@ -189,7 +189,9 @@ def get_role_info_command(update, context):
     if not available:
         update.message.reply_markdown("No user with this role")
     else:
-        message = "\n".join(member.user.full_name for member in available)
+        message = [f"({len(available)})"] + [f"├─{member.user.full_name}" for member in available]
+        message[-1] = "└" + message[-1][1:]
+        message = "\n".join(message)
         update.message.reply_markdown(message)
 
 
@@ -252,9 +254,7 @@ def check_mention(update, context):
         return
     for i in range(0, len(available), BATCH):
         current = available[i:i + BATCH]
-        message = []
-        for member in current:
-            message.append(f"[{member.user.first_name}](tg://user?id={member.user.id})")
+        message = [f"[{member.user.first_name}](tg://user?id={member.user.id})" for member in available]
         update.message.reply_markdown(", ".join(message))
 
 
