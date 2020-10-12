@@ -189,10 +189,9 @@ def get_role_info_command(update, context):
     if not available:
         update.message.reply_markdown("No user with this role")
     else:
-        message = [f"({len(available)})"] + [f"├─{member.user.full_name}" for member in available]
+        message = [f"({len(available)}) @{role}"] + [f"├─{member.user.full_name}" for member in available]
         message[-1] = "└" + message[-1][1:]
-        message = "\n".join(message)
-        update.message.reply_markdown(message)
+        update.message.reply_markdown("\n".join(message))
 
 
 @prefix_command(command="me", help="Get your roles")
@@ -217,17 +216,19 @@ def get_group_info_command(update, context):
     roles = {}
     for record in result:
         roles.setdefault(record.role,  []).append(record.user_id)
-    message = ["Tree of roles: "]
+    message = []
     for role in roles.keys():
         chat_members = [context.bot.get_chat_member(chat_id, user_id) for user_id in roles[role]]
         available = [member for member in chat_members if member.status not in IGNORE_STATUS]
         if not available:
             continue
         message.append(f"({len(available)}) @{role}: ")
-        for member in available:
-            message.append(f"├─{member.user.full_name}")
+        message += [f"├─{member.user.full_name}" for member in available]
         message[-1] = "└" + message[-1][1:]
-    update.message.reply_markdown("\n".join(message))
+    if not message:
+        update.message.reply_text("No entry found for this group")
+    else:
+        update.message.reply_markdown("\n".join(message))
 
 
 @only_registered_group
@@ -254,7 +255,7 @@ def check_mention(update, context):
         return
     for i in range(0, len(available), BATCH):
         current = available[i:i + BATCH]
-        message = [f"[{member.user.first_name}](tg://user?id={member.user.id})" for member in available]
+        message = [f"[{member.user.first_name}](tg://user?id={member.user.id})" for member in current]
         update.message.reply_markdown(", ".join(message))
 
 
