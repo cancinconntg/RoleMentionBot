@@ -221,7 +221,7 @@ def get_group_info_command(update, context):
         available = [member for member in chat_members if member.status not in IGNORE_STATUS]
         if not available:
             continue
-        message.append(f"@{role}: ")
+        message.append(f"({len(available)}) @{role}: ")
         for member in available:
             message.append(f"├─{member.user.full_name}")
         message[-1] = "└" + message[-1][1:]
