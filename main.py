@@ -163,8 +163,13 @@ def delete_role_command(update, context):
 
     cur = DB_CONN.cursor()
     cur.execute("DELETE FROM roletable WHERE user_id=%s AND group_id=%s AND role=%s", (user_id, chat_id, role))
+    rowcount = cur.rowcount
     DB_CONN.commit()
-    update.message.reply_markdown(f"Role @{role} deleted")
+
+    if rowcount:
+        update.message.reply_markdown(f"Role @{role} deleted")
+    else:
+        update.message.reply_markdown(f"You didn't have @{role}.")
 
 
 @prefix_command(command="get", usage="<role>", help="Get role members")
