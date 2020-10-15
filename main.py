@@ -91,7 +91,7 @@ def start_command(update, context):
         message += "and it is registered :)"
     else:
         message += "and it is not registered yet. So most features may not available :("
-    update.message.reply_markdown(message)
+    update.message.reply_text(message)
 
 
 @prefix_command(command="help", hidden=True)
@@ -120,30 +120,30 @@ def add_role_command(update, context):
 
     args = get_command_args(update.message.text)
     if len(args) != 1:
-        update.message.reply_markdown("Bad formatted request")
+        update.message.reply_text("Bad formatted request")
         return
     role = find_role(args[0])
     if not role:
-        update.message.reply_markdown("Bad formatted request")
+        update.message.reply_text("Bad formatted request")
         return
 
     cur = DB_CONN.cursor()
     cur.execute("SELECT * FROM roletable WHERE user_id=%s AND group_id=%s AND role=%s", (user_id, chat_id, role))
     result = cur.fetchall()
     if result:
-        update.message.reply_markdown(f"Role @{role} exists for you")
+        update.message.reply_text(f"Role @{role} exists for you")
         return
 
     cur.execute("SELECT * FROM roletable WHERE user_id=%s", (user_id,))
     result = cur.fetchall()
     if len(result) >= MAX_ROLES:
-        update.message.reply_markdown(f"You have reached the maximum number of roles :(")
+        update.message.reply_text(f"You have reached the maximum number of roles :(")
         return
 
     cur.execute("INSERT INTO roletable(user_id, group_id, role) "
                 "VALUES (%s, %s, %s)", (user_id, chat_id, role))
     DB_CONN.commit()
-    update.message.reply_markdown(f"Role @{role} added")
+    update.message.reply_text(f"Role @{role} added")
 
 
 @prefix_command(command="del", usage="<role>", help="Delete role")
@@ -154,11 +154,11 @@ def delete_role_command(update, context):
 
     args = get_command_args(update.message.text)
     if len(args) != 1:
-        update.message.reply_markdown("Bad formatted request")
+        update.message.reply_text("Bad formatted request")
         return
     role = find_role(args[0])
     if not role:
-        update.message.reply_markdown("Bad formatted request")
+        update.message.reply_text("Bad formatted request")
         return
 
     cur = DB_CONN.cursor()
@@ -167,9 +167,9 @@ def delete_role_command(update, context):
     DB_CONN.commit()
 
     if rowcount:
-        update.message.reply_markdown(f"Role @{role} deleted")
+        update.message.reply_text(f"Role @{role} deleted")
     else:
-        update.message.reply_markdown(f"You didn't have @{role}.")
+        update.message.reply_text(f"You didn't have @{role}.")
 
 
 @prefix_command(command="get", usage="<role>", help="Get role members")
@@ -179,11 +179,11 @@ def get_role_info_command(update, context):
 
     args = get_command_args(update.message.text)
     if len(args) != 1:
-        update.message.reply_markdown("Bad formatted request")
+        update.message.reply_text("Bad formatted request")
         return
     role = find_role(args[0])
     if not role:
-        update.message.reply_markdown("Bad formatted request")
+        update.message.reply_text("Bad formatted request")
         return
 
     cur = DB_CONN.cursor()
@@ -192,11 +192,11 @@ def get_role_info_command(update, context):
     chat_members = [context.bot.get_chat_member(chat_id, record.user_id) for record in result]
     available = [member for member in chat_members if member.status not in IGNORE_STATUS]
     if not available:
-        update.message.reply_markdown("No user with this role")
+        update.message.reply_text("No user with this role")
     else:
         message = [f"({len(available)}) @{role}"] + [f"├─{member.user.full_name}" for member in available]
         message[-1] = "└" + message[-1][1:]
-        update.message.reply_markdown("\n".join(message))
+        update.message.reply_text("\n".join(message))
 
 
 @prefix_command(command="me", help="Get your roles")
@@ -233,7 +233,7 @@ def get_group_info_command(update, context):
     if not message:
         update.message.reply_text("No entry found for this group")
     else:
-        update.message.reply_markdown("\n".join(message))
+        update.message.reply_text("\n".join(message))
 
 
 @only_registered_group
