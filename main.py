@@ -10,7 +10,7 @@ PREFIX = os.getenv("PREFIX", ";")
 BATCH = int(os.getenv("BATCH", 7))
 MAX_ROLES = int(os.getenv("MAX_ROLES", 10))
 IGNORE_STATUS = (telegram.ChatMember.LEFT, telegram.ChatMember.KICKED)
-ROLE_PATTERN = re.compile(r"^(?=.{6,33}$)@([a-zA-Z0-9_]+)$")
+ROLE_PATTERN = re.compile(r"^@([a-zA-Z0-9_]{5,32})$")
 
 TOKEN = os.getenv("TOKEN")
 if not TOKEN:
