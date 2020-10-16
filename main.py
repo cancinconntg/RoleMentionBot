@@ -10,6 +10,7 @@ PREFIX = os.getenv("PREFIX", ";")
 BATCH = int(os.getenv("BATCH", 7))
 MAX_ROLES = int(os.getenv("MAX_ROLES", 10))
 IGNORE_STATUS = (telegram.ChatMember.LEFT, telegram.ChatMember.KICKED)
+ADMIN_STATUS = (telegram.ChatMember.ADMINISTRATOR, telegram.ChatMember.CREATOR)
 ROLE_PATTERN = re.compile(r"^@([a-zA-Z0-9_]{5,32})$")
 
 TOKEN = os.getenv("TOKEN")
@@ -59,6 +60,18 @@ def prefix_command(command, **kwargs):
         CommandList.append(Command(command=command, function=wrapper, **kwargs))
         return wrapper
     return _decorator
+
+
+def admin_command(func):
+    def wrapper(update, context):
+        chat = update.effective_chat
+        user = update.effective_user
+        chat_member = chat.get_member(user.id)
+        if chat_member.status in ADMIN_STATUS:
+            return func(update, context)
+        update.message.reply_text("Only admins can use this command!")
+
+    return wrapper
 
 
 def only_registered_group(func):
@@ -211,8 +224,9 @@ def get_user_info_command(update, context):
     update.message.reply_text("Your roles: \n" + " ".join(roles))
 
 
-@prefix_command(command="all", help="Get group roles")
+@prefix_command(command="all", help="Get group roles (admin only)")
 @only_registered_group
+@admin_command
 def get_group_info_command(update, context):
     chat_id = update.message.chat_id
     cur = DB_CONN.cursor()
