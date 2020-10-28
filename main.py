@@ -9,9 +9,12 @@ from typing import NamedTuple, Callable
 PREFIX = os.getenv("PREFIX", ";")
 BATCH = int(os.getenv("BATCH", 7))
 MAX_ROLES = int(os.getenv("MAX_ROLES", 10))
-IGNORE_STATUS = (telegram.ChatMember.LEFT, telegram.ChatMember.KICKED)
-ADMIN_STATUS = (telegram.ChatMember.ADMINISTRATOR, telegram.ChatMember.CREATOR)
 ROLE_PATTERN = re.compile(r"^@([a-zA-Z0-9_]{5,32})$")
+IGNORE_STATUS = (telegram.ChatMember.LEFT,
+                 telegram.ChatMember.KICKED,
+                 telegram.ChatMember.RESTRICTED)
+ADMIN_STATUS = (telegram.ChatMember.ADMINISTRATOR,
+                telegram.ChatMember.CREATOR)
 
 TOKEN = os.getenv("TOKEN")
 if not TOKEN:
@@ -91,6 +94,13 @@ def find_role(message):
 
 def get_command_args(message):
     return message.split()[1:]
+
+
+def get_available(bot, group_id, users: list):
+    chat_members = [bot.get_chat_member(group_id, user_id) for user_id in users]
+    available = [member for member in chat_members
+                 if member.status not in IGNORE_STATUS or member.is_member]
+    return available
 
 
 @prefix_command(command="start", hidden=True)
@@ -202,8 +212,7 @@ def get_role_info_command(update, context):
     cur = DB_CONN.cursor()
     cur.execute("SELECT * FROM roletable WHERE group_id=%s AND role=%s", (chat_id, role))
     result = cur.fetchall()
-    chat_members = [context.bot.get_chat_member(chat_id, record.user_id) for record in result]
-    available = [member for member in chat_members if member.status not in IGNORE_STATUS]
+    available = get_available(context.bot, chat_id, [record.user_id for record in result])
     if not available:
         update.message.reply_text("No user with this role")
     else:
@@ -237,8 +246,7 @@ def get_group_info_command(update, context):
         roles.setdefault(record.role,  []).append(record.user_id)
     message = []
     for role in roles.keys():
-        chat_members = [context.bot.get_chat_member(chat_id, user_id) for user_id in roles[role]]
-        available = [member for member in chat_members if member.status not in IGNORE_STATUS]
+        available = get_available(context.bot, chat_id, roles[role])
         if not available:
             continue
         message.append(f"({len(available)}) @{role}: ")
@@ -268,8 +276,7 @@ def check_mention(update, context):
         users.update(record.user_id for record in result)
 
     users = list(users)
-    chat_members = [context.bot.get_chat_member(chat_id, user_id) for user_id in users]
-    available = [member for member in chat_members if member.status not in IGNORE_STATUS]
+    available = get_available(context.bot, chat_id, users)
     if not available:
         return
     for i in range(0, len(available), BATCH):
