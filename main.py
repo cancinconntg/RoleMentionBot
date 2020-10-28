@@ -85,6 +85,7 @@ def get_command_args(message):
 
 
 def get_available(bot, group_id, users: list):
+    users = list(filter(lambda user_id: user_id != -1, users))
     chat_members = [bot.get_chat_member(group_id, user_id) for user_id in users]
     available = [member for member in chat_members
                  if member.status not in IGNORE_STATUS or member.is_member]
@@ -138,17 +139,19 @@ def add_role_command(update, context):
         update.message.reply_text("Bad formatted request")
         return
 
+    if not DB.exist(chat_id, role):
+        update.message.reply_text(f"Role @{role} hasn't been created")
+        return
     if DB.select(user_id=user_id, group_id=chat_id, role=role):
         update.message.reply_text(f"Role @{role} exists for you")
         return
-
     result = DB.select(user_id=user_id)
     if len(result) >= MAX_ROLES:
         update.message.reply_text(f"You have reached the maximum number of roles :(")
         return
 
     DB.insert(user_id, chat_id, role)
-    update.message.reply_text(f"Role @{role} added")
+    update.message.reply_text(f"Role @{role} added to you")
 
 
 @prefix_command(command="del", usage="<role>", help="Delete role")
@@ -168,7 +171,7 @@ def delete_role_command(update, context):
 
     result = DB.delete(user_id=user_id, group_id=chat_id, role=role)
     if result:
-        update.message.reply_text(f"Role @{role} deleted")
+        update.message.reply_text(f"Role @{role} deleted from you")
     else:
         update.message.reply_text(f"You didn't have @{role}.")
 
@@ -216,18 +219,60 @@ def get_group_info_command(update, context):
     roles = {}
     for record in result:
         roles.setdefault(record.role,  []).append(record.user_id)
+    roles = sorted(roles.items(), key=lambda item: (-len(item[1]), item[0]))
     message = []
-    for role in roles.keys():
-        available = get_available(context.bot, chat_id, roles[role])
-        if not available:
-            continue
+    for role, users in roles:
+        available = get_available(context.bot, chat_id, users)
         message.append(f"({len(available)}) @{role}: ")
         message += [f"├─{member.user.full_name}" for member in available]
-        message[-1] = "└" + message[-1][1:]
+        if available:
+            message[-1] = "└" + message[-1][1:]
     if not message:
         update.message.reply_text("No entry found for this group")
     else:
         update.message.reply_text("\n".join(message))
+
+
+@prefix_command(command="create", usage="<role>", help="Create group role (admin only)")
+@only_registered_group
+@admin_command
+def create_role_command(update, context):
+    chat_id = update.message.chat_id
+    args = get_command_args(update.message.text)
+    if len(args) != 1:
+        update.message.reply_text("Bad formatted request")
+        return
+    role = find_role(args[0])
+    if not role:
+        update.message.reply_text("Bad formatted request")
+        return
+
+    if DB.exist(chat_id, role):
+        update.message.reply_text(f"Role @{role} exists in group")
+        return
+    DB.insert(-1, chat_id, role)
+    update.message.reply_text(f"Role @{role} created. Users can join via ;add command")
+
+
+@prefix_command(command="purge", usage="<role>", help="Purge group role (admin only)")
+@only_registered_group
+@admin_command
+def purge_role_command(update, context):
+    chat_id = update.message.chat_id
+    args = get_command_args(update.message.text)
+    if len(args) != 1:
+        update.message.reply_text("Bad formatted request")
+        return
+    role = find_role(args[0])
+    if not role:
+        update.message.reply_text("Bad formatted request")
+        return
+
+    if not DB.exist(chat_id, role):
+        update.message.reply_text(f"Role @{role} not found")
+        return
+    DB.delete(group_id=chat_id, role=role)
+    update.message.reply_text(f"Role @{role} purged from group")
 
 
 @only_registered_group
