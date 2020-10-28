@@ -30,6 +30,7 @@ class Database:
         cur = self.db.cursor()
         cur.execute("INSERT INTO roletable(user_id, group_id, role) "
                     "VALUES (%s, %s, %s)", (user_id, group_id, role))
+        self.db.commit()
         return cur.rowcount
 
     def delete(self, **kwargs):
@@ -38,6 +39,7 @@ class Database:
             req = "DELETE FROM roletable"
         cur = self.db.cursor()
         cur.execute(req, list(kwargs.values()))
+        self.db.commit()
         return cur.rowcount
 
     def exist(self, group_id, role):
