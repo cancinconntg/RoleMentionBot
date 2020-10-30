@@ -19,8 +19,8 @@ TOKEN = os.getenv("TOKEN")
 if not TOKEN:
     raise Exception("TOKEN not found")
 
-DB_URL = os.environ['DATABASE_URL']
-DB = Database(DB_URL)
+DB_FILE = "role.db"
+DB = Database(DB_FILE)
 
 REGISTERED = os.getenv("REGISTERED")
 if REGISTERED is None:
@@ -301,7 +301,6 @@ def check_mention(update, context):
 
 
 def main():
-    DB.init_tables()
     updater = Updater(TOKEN, use_context=True)
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CommandHandler("start", start_command))

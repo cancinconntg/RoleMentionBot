@@ -1,2 +1,4 @@
 .idea/
-local.db
+__pycache__/
+role.db
+enviornment
