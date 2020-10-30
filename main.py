@@ -1,10 +1,13 @@
-from database import Database
 import os
 import re
 import telegram
 from telegram.ext import Updater, CommandHandler, PrefixHandler, MessageHandler, Filters
 from typing import NamedTuple, Callable
+from dotenv import load_dotenv
+from database import Database
 
+
+load_dotenv()
 PREFIX = os.getenv("PREFIX", ";")
 BATCH = int(os.getenv("BATCH", 7))
 MAX_ROLES = int(os.getenv("MAX_ROLES", 10))
