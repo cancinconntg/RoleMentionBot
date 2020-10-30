@@ -1,5 +1,6 @@
 import os
 import re
+import logging
 import telegram
 from telegram.ext import Updater, CommandHandler, PrefixHandler, MessageHandler, Filters
 from typing import NamedTuple, Callable
@@ -27,10 +28,8 @@ DB = Database(DB_FILE)
 
 REGISTERED = os.getenv("REGISTERED")
 if REGISTERED is None:
-    print("WARNING: There is no registered groups")
-    REGISTERED = set()
-else:
-    REGISTERED = set(map(int, REGISTERED.split(';')))
+    raise Exception("No registered groups")
+REGISTERED = set(map(int, REGISTERED.split(';')))
 
 
 class Command(NamedTuple):
@@ -304,6 +303,8 @@ def check_mention(update, context):
 
 
 def main():
+    logging.basicConfig(level=logging.INFO,
+                        format="[%(levelname)s] %(message)s")
     updater = Updater(TOKEN, use_context=True)
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CommandHandler("start", start_command))
@@ -312,7 +313,7 @@ def main():
 
     for obj in CommandList:
         dispatcher.add_handler(PrefixHandler(PREFIX, obj.command, obj.function))
-        print(f"Command {obj.command} added {obj.function}")
+        logging.info(f"Command {obj.command} added {obj.function}")
 
     dispatcher.add_handler(MessageHandler(Filters.all, check_mention))
     updater.start_polling()
