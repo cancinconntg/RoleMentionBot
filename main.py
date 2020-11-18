@@ -279,12 +279,10 @@ def purge_role_command(update, context):
 
 @only_registered_group
 def check_mention(update, context):
-    chat_id = update.message.chat_id
-    if update.message.text is not None:
-        text = update.message.text
-    elif update.message.caption is not None:
-        text = update.message.caption
-    else:
+    message = update.message if update.message else update.edited_message
+    chat_id = message.chat_id
+    text = message.text if message.text else message.caption
+    if text is None:
         return
     users = set()
     roles = [match[1] for match in ROLE_PATTERN.findall(text)]
@@ -298,8 +296,8 @@ def check_mention(update, context):
         return
     for i in range(0, len(available), BATCH):
         current = available[i:i + BATCH]
-        message = [f"[{member.user.first_name}](tg://user?id={member.user.id})" for member in current]
-        update.message.reply_markdown(", ".join(message))
+        msg = [f"[{member.user.first_name}](tg://user?id={member.user.id})" for member in current]
+        message.reply_markdown(", ".join(msg))
 
 
 def main():
