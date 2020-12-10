@@ -5,7 +5,7 @@ import telegram
 from telegram.ext import Updater, CommandHandler, PrefixHandler, MessageHandler, Filters
 from typing import NamedTuple, Callable
 from dotenv import load_dotenv
-from database import Database
+from .database import Database
 
 
 load_dotenv()
@@ -23,13 +23,13 @@ TOKEN = os.getenv("TOKEN")
 if not TOKEN:
     raise Exception("TOKEN not found")
 
-DB_FILE = "role.db"
+DB_FILE = os.getenv("DBFILE", "db/role.db")
 DB = Database(DB_FILE)
 
 REGISTERED = os.getenv("REGISTERED")
 if REGISTERED is None:
     raise Exception("No registered groups")
-REGISTERED = set(map(int, REGISTERED.split(';')))
+REGISTERED = set(map(int, REGISTERED.split(':')))
 
 
 class Command(NamedTuple):
