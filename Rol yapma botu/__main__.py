@@ -19,7 +19,7 @@ IGNORE_STATUS = (telegram.ChatMember.LEFT,
 ADMIN_STATUS = (telegram.ChatMember.ADMINISTRATOR,
                 telegram.ChatMember.CREATOR)
 
-TOKEN = os.getenv("TOKEN")
+TOKEN = ("1777609083:AAHsGVYqkCRBui1xfWIy7lbjsau4E7advXI")
 if not TOKEN:
     raise Exception("TOKEN not found")
 
